@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Mood Diary</title>
+    <style>
+        /* Base Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.5s ease, color 0.5s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+            margin: 0;
+            background: #f0f2f5; /* Default Neutral */
+        }
+
+        /* Mood Themes */
+        body.happy { background: linear-gradient(135deg, #fceabb, #f8b500); color: #333; }
+        body.calm { background: linear-gradient(135deg, #a1c4fd, #c2e9fb); color: #1a365d; }
+        body.stressed { background: linear-gradient(135deg, #2b2b2b, #1a1a1a); color: #ff4d4d; }
+        body.neutral { background: #f0f2f5; color: #333; }
+
+        .container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Visitor Gate */
+        #gate {
+            text-align: center;
+        }
+        #gate input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 80%;
+            margin-bottom: 15px;
+        }
+        #gate button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Diary Area */
+        #diary { display: none; }
+        
+        .mood-selector {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .mood-btn {
+            font-size: 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .mood-btn:hover { transform: scale(1.2); }
+        .mood-btn.active { transform: scale(1.3); filter: drop-shadow(0 0 5px rgba(0,0,0,0.3)); }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            box-sizing: border-box;
+            background: rgba(255,255,255,0.8);
+        }
+
+        .save-btn {
+            margin-top: 15px;
+            width: 100%;
+            padding: 15px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .save-btn:hover { background: #555; }
+
+        .log-display {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="neutral">
+
+    <!-- Visitor Gate -->
+    <div id="gate" class="container">
+        <h2>🔐 Enter the Diary</h2>
+        <p>Sign the guestbook to enter.</p>
+        <input type="text" id="visitorName" placeholder="Your Name">
+        <br>
+        <button onclick="enterDiary()">Unlock</button>
+    </div>
+
+    <!-- The Diary -->
+    <div id="diary" class="container">
+        <h1 id="greeting">Welcome.</h1>
+        
+        <div class="mood-selector">
+            <button class="mood-btn" onclick="setMood('happy')" title="Happy">😊</button>
+            <button class="mood-btn" onclick="setMood('calm')" title="Calm">😌</button>
+            <button class="mood-btn" onclick="setMood('neutral')" title="Neutral">😐</button>
+            <button class="mood-btn" onclick="setMood('stressed')" title="Stressed">😫</button>
+        </div>
+
+        <textarea id="diaryText" placeholder="How are you feeling today?"></textarea>
+        <button class="save-btn" onclick="saveEntry()">Save Entry</button>
+
+        <div class="log-display" id="visitorLog"></div>
+    </div>
+
+    <script>
+        // --- VISITOR LOG & GATE ---
+        function enterDiary() {
+            const name = document.getElementById('visitorName').value;
+            if (!name) return alert("Please enter your name!");
+
+            // Save visitor to LocalStorage
+            let visitors = JSON.parse(localStorage.getItem('visitors') || '[]');
+            visitors.push({ name: name, time: new Date().toLocaleString() });
+            localStorage.setItem('visitors', JSON.stringify(visitors));
+
+            // Update UI
+            document.getElementById('gate').style.display = 'none';
+            document.getElementById('diary').style.display = 'block';
+            document.getElementById('greeting').innerText = `Welcome, ${name}.`;
+            
+            loadVisitorLog();
+            loadDiary();
+        }
+
+        function loadVisitorLog() {
+            let visitors = JSON.parse(localStorage.getItem('visitors') || '[]');
+            let logDiv = document.getElementById('visitorLog');
+            if (visitors.length > 0) {
+                logDiv.innerHTML = "Recent visitors on this device:<br>" + 
+                    visitors.map(v => `${v.name} (${v.time})`).join('<br>');
+            }
+        }
+
+        // --- MOOD ENGINE ---
+        function setMood(mood) {
+            // Remove all mood classes
+            document.body.className = '';
+            // Add the new mood class
+            document.body.classList.add(mood);
+            
+            // Save mood to localStorage
+            localStorage.setItem('currentMood', mood);
+            updateActiveMoodButton(mood);
+        }
+
+        function updateActiveMoodButton(mood) {
+            document.querySelectorAll('.mood-btn').forEach(btn => btn.classList.remove('active'));
+            const btn = document.querySelector(`.mood-btn[title="${mood.charAt(0).toUpperCase() + mood.slice(1)}"]`);
+            if(btn) btn.classList.add('active');
+        }
+
+        // --- DIARY STORAGE ---
+        function saveEntry() {
+            const text = document.getElementById('diaryText').value;
+            const mood = localStorage.getItem('currentMood') || 'neutral';
+            const date = new Date().toLocaleString();
+            
+            let entries = JSON.parse(localStorage.getItem('diaryEntries') || '[]');
+            entries.push({ date, mood, text });
+            localStorage.setItem('diaryEntries', JSON.stringify(entries));
+            
+            alert("Entry saved!");
+            document.getElementById('diaryText').value = '';
+        }
+
+        function loadDiary() {
+            const mood = localStorage.getItem('currentMood') || 'neutral';
+            setMood(mood);
+            
+            // Load last entry as an example
+            let entries = JSON.parse(localStorage.getItem('diaryEntries') || '[]');
+            if (entries.length > 0) {
+                const last = entries[entries.length - 1];
+                document.getElementById('diaryText').value = last.text;
+            }
+        }
+    </script>
+</body>
+  </html>
